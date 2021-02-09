@@ -1,0 +1,346 @@
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Warmup-Word-Trainer</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@2.6.0/dist/tf.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.4.2/dist/speech-commands.js"></script>
+
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: Arial;
+      outline: none;
+      outline-style: none;
+      box-shadow: none;
+      list-style: none;
+    }
+
+    body {
+      background: black;
+      color: white;
+    }
+
+    #content {
+      border-radius: 10px;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      padding: 20px 1vw 20px 1vw;
+      text-align: center;
+      color: white;
+      /* bring your own prefixes */
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.9);
+      border: 1px solid white;
+    }
+
+    #main {
+      text-align: center;
+    }
+
+    input {
+      width: 48%;
+      color: darkorange;
+      background: none;
+      text-align: center;
+      border: 1px solid darkorange;
+      border-radius: 4px;
+      height: 30px;
+    }
+
+    ::placeholder {
+      /* Chrome, Firefox, Opera, Safari 10.1+ */
+      color: #ff8c00;
+      opacity: 1;
+      /* Firefox */
+    }
+
+    #input-label:disabled {
+      background: rgba(255, 255, 255, 0.2);
+      cursor: no-drop;
+      color: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 140, 0, 0.4);
+    }
+
+
+
+    #input-label:disabled::-webkit-input-placeholder {
+      /* WebKit browsers */
+      color: rgba(255, 255, 255, 0.2);
+    }
+
+    #input-label:disabled:-moz-placeholder {
+      /* Mozilla Firefox 4 to 18 */
+      color: rgba(255, 255, 255, 0.2);
+    }
+
+    #input-label:disabled::-moz-placeholder {
+      /* Mozilla Firefox 19+ */
+      color: rgba(255, 255, 255, 0.2);
+    }
+
+    #input-label:disabled:-ms-input-placeholder {
+      /* Internet Explorer 10+ */
+      color: rgba(255, 255, 255, 0.2);
+    }
+
+
+
+
+    button {
+      cursor: pointer;
+      border-radius: 4px;
+      padding: 8px;
+      background: none;
+    }
+
+
+
+    .recording {
+      color: rgb(255, 140, 0);
+      border: 1px solid darkorange;
+    }
+
+    .recording:disabled {
+      background: rgba(255, 255, 255, 0.2);
+      cursor: no-drop;
+      color: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 140, 0, 0.4);
+    }
+
+    .training {
+      color: #7FFF00;
+      border: 1px solid #7FFF00;
+    }
+
+    .training:disabled {
+      background: rgba(255, 255, 255, 0.2);
+      cursor: no-drop;
+      color: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(127, 255, 0, 0.4);
+    }
+
+    .listening {
+      color: rgb(0, 255, 255);
+      border: 1px solid #00FFFF;
+    }
+
+    .listening:disabled {
+      background: rgba(255, 255, 255, 0.2);
+      cursor: no-drop;
+      color: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(0, 255, 255, 0.4);
+    }
+
+    .files {
+      color: yellow;
+      border: 1px solid yellow;
+    }
+
+
+    #left-area {
+      width: 48%;
+    }
+
+    #right-area {
+      width: 48%;
+    }
+
+    /*new FLEX BOX classes */
+    .flex {
+      display: -webkit-flex;
+      display: -ms-flexbox;
+      display: flex;
+    }
+
+    .row {
+      flex-direction: row;
+    }
+
+    .column {
+      flex-direction: column;
+    }
+
+    .space-between {
+      justify-content: space-between;
+    }
+
+    .space-around {
+      justify-content: space-around;
+    }
+
+    .justify-start {
+      justify-content: flex-start;
+    }
+
+    .justify-center {
+      justify-content: center;
+    }
+
+    .justify-end {
+      justify-content: flex-end;
+    }
+
+    .align-center {
+      align-items: center;
+      -webkit-align-items: center;
+      -ms-flex-align: center;
+    }
+
+    .align-space-between {
+      align-content: space-between;
+    }
+
+    table {
+      border-collapse: collapse;
+      height: 100%;
+      min-height: 100%;
+      max-height: 100%;
+    }
+
+    th {
+      cursor: default;
+      width: 200px;
+    }
+
+    th:first-child {
+      padding-left: 8px;
+    }
+
+
+    .real-td {
+      cursor: pointer;
+      padding: 8px 0 8px 0;
+    }
+
+    .unreal-td {
+      padding: 8px 0 8px 0;
+    }
+
+    .real-tr:hover {
+      background: darkorange;
+    }
+
+    td {
+      width: 200px;
+    }
+
+    #label-list {
+      /*height: 22vw;*/
+      /*width:18%;*/
+      overflow: hidden;
+      overflow-y: scroll;
+    }
+
+    input:focus::placeholder {
+      color: transparent;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="content" class="flex column space-between">
+    <h1>
+      Warmup-Wörter-Trainer
+    </h1>
+    <br />
+    <h4>basierend auf Machine learning</h4>
+    <br />
+
+    <div id="middle" class="flex row space-between">
+      <!--neue teil input labels -->
+      <input id="input-label" type="text" placeholder="Neues Label eingeben" onclick="this.select()"
+        onblur="this.placeholder = 'Neues Label eingeben'">
+      <input id="console" type="text" placeholder="0 Aufnahmen" disabled />
+    </div>
+    <br />
+    <!--down-->
+    <div id="main" class="flex row space-between">
+      <!--left-->
+      <div id="left-area" class="flex column space-between">
+
+
+        <button id="btn-record" class="recording" onclick="collect()" disabled>
+          Aufnahme starten
+          <!-- Nimmt gerade auf -->
+        </button>
+        <div class="flex row space-between" style="width:100%">
+          <button style="width:auto;" id="btn-add-label" class="recording" onclick="addLabel()" disabled>
+            speichern
+          </button>
+          <button style="width:auto;" id="btn-delete-label" class="recording" onclick="deleteTmpExamples()" disabled>
+            verwerfen
+          </button>
+        </div>
+
+
+        <div class="flex column space-between" style="height: 50%;">
+
+          <button id="train" class="training" onclick="train()" disabled>
+            Model trainieren
+          </button>
+
+
+          <button id="listen" class="listening" onclick="listen()" disabled>
+            Erkennung starten
+          </button>
+        </div>
+        <!--
+        <div class="flex column">
+          
+            1. wenn save gedrückt wird soll auch examples obj gespeichert werden
+            2. load the examples and console log it
+          
+          <button id="load" class="files" onclick="load()">
+            Model laden
+          </button>
+          <button id="save" class="files" onclick="save()">
+            Model speichern
+          </button>
+          <a id="downloadAnchorElem" style="display:none"></a>
+        </div>
+-->
+
+
+      </div>
+
+      <div id="right-area" class="flex column space-between">
+        <!--<h2>
+          Label list
+        </h2> -->
+
+        <!-- liste-->
+        <div id="table-content">
+          <table>
+            <tr>
+              <td>
+                <table>
+                  <tr>
+                    <th style="text-align: left;">Label</th>
+                    <th style="text-align: right;">Examples</th>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div style="height:220px; overflow:auto;">
+                  <table id="label-list">
+
+                  </table>
+                </div>
+        </div>
+        <!--  <input type="file" name="files[]" id="fileUpload" multiple hidden>-->
+      </div>
+    </div>
+    <!-- <script src="http://localhost:3000/socket.io/socket.io.js"></script> This Creates io -->
+    <script src="index_tensorflow.js"></script>
+
+    <!--<script src="upload-manager.js"></script>-->
+</body>
+
+</html>
