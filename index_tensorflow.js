@@ -330,9 +330,10 @@ function time2out(){
       timeCounter--;
     }
     else{
-      collect();
+      
       timeCounter = 2;
       clearInterval(time);
+      collect();
     }
     
   }, 1000);
