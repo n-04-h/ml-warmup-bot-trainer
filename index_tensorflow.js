@@ -5,102 +5,155 @@ const btn_remove = document.getElementById("btn-delete-label");
 const btn_train = document.getElementById("train");
 const btn_listen = document.getElementById("listen");
 
-
-
+let start_collect_state = false;
 let collect_label_arr = [];
 let extra_label_arr = [];
-
 let recognizer;
 let label_counter = 0;
-
 let current_examples_length = 0;
+let exist_label_counter = null;
 
 
 inp_label.addEventListener("input", function () {
+  switchConsoleColor("#ff8c00");
+  if (inp_label.value !== "") {
 
-  if (inp_label.value !== "") btn_collect.disabled = false;
-  else btn_collect.disabled = true;
+    // check
+    if (extra_label_arr.includes(inp_label.value)) {
+      //ändere exist_label_counter
+      let index = extra_label_arr.indexOf(inp_label.value);
+
+      //[index][1] sind die examples diese in console eintragen
+      current_examples_length = collect_label_arr[index][1];
+      document.querySelector("#console").value = collect_label_arr[index][1] + ` Aufnahmen`;
+
+    }
+    else {
+      current_examples_length = 0;
+      document.querySelector("#console").value = `0 Aufnahmen`;
+    }
+    btn_collect.disabled = false;
+  }
+  else {
+    current_examples_length = 0;
+    document.querySelector("#console").value = `0 Aufnahmen`;
+    btn_collect.disabled = true;
+  }
 });
-
-
 // One frame is ~23ms of audio.
 const NUM_FRAMES = 10;
-
 let tmp_examples = [];
 let examples = [];
-
 const INPUT_SHAPE = [NUM_FRAMES, 232, 1];
 let model;
-
 async function app() {
   recognizer = speechCommands.create("BROWSER_FFT");
   await recognizer.ensureModelLoaded();
 }
-
 app();
 
 function addLabel() {
-  //falls gefunden push dazu
-  //falls nichts gefunden push neu
   examples = examples.concat(tmp_examples);
   tmp_examples = [];
   let current_input = inp_label.value;
+
+//soll++ bei neu oder bei gemachtem eintrag
+//collect_label_arr = ["test", 1]
+//collect_label_arr = ["test", 2]
+
+
+/*
+logik:
+- drückt start => nimmt paar samples
+- wird gestoppt => aufnahmen_counter++
+- drückt add => collect_label_arr =[index][1] = aufnahme_counter
+*/
 
   if (extra_label_arr.includes(current_input)) {
     let indexOfLabel = extra_label_arr.indexOf(current_input);
     collect_label_arr[indexOfLabel][1] = current_examples_length;
   }
-
   else {
     collect_label_arr.push([current_input, current_examples_length]);
     extra_label_arr.push(current_input);
     label_counter++;
   }
 
-  
   current_examples_length = 0;
-
+  
+  
   inp_label.value = "";
   document.querySelector("#console").value = `0 Aufnahmen`;
   updateLabelList();
-
+  toggleLabelListItems(false);
   toggleThisButtons(true, true, true, true, true);
-
-
   if (label_counter >= 2) {
     toggleThisButtons(true, true, true, false, true);
   }
-
 }
+
+/*
+
+prüfe ob input selber wie davor ist, wenn ja dann counter nicht = 0 setzen
+
+*/
+
+let last_label = "";
 
 function collect() {
   if (recognizer.isListening()) {
+    last_label = inp_label.value;
+    current_examples_length++;
     document.getElementById("btn-record").textContent = "Aufnahme starten";
-
+    document.querySelector("#console").value = `${current_examples_length} Aufnahmen`;
+    toggleLabelListItems(true);
     toggleThisButtons(false, false, false, true, true);
-    console.log("jetzt sollten save und remove enabled sein");
+    start_collect_state = false;
+    exist_label_counter = null;
     return recognizer.stopListening();
   }
-
-  //wenn input != ""
   if (inp_label.value !== "") {
-    document.getElementById("btn-record").textContent = "Aufnahme stoppen";
+toggleThisButtons(1,1,1,1,1);
+
+    document.getElementById("btn-record").textContent = "Aufnahme läuft";
     recognizer.listen(
       async ({ spectrogram: { frameSize, data } }) => {
         let vals = normalize(data.subarray(-frameSize * NUM_FRAMES));
-
         let current_input = inp_label.value;
 
-        if (extra_label_arr.includes(current_input)) {
-          let label_counter = extra_label_arr.indexOf(current_input);
-          tmp_examples.push({ vals, label_counter });
+        //wenn nicht gestartet
+        if (!start_collect_state) {
+          time2out();
+          start_collect_state = true;
+          //wenn label vorhanden
+
+          if (extra_label_arr.includes(current_input)) {
+            //ändere exist_label_counter
+            exist_label_counter = extra_label_arr.indexOf(current_input);
+            let label_counter = exist_label_counter;
+            tmp_examples.push({ vals, label_counter });
+            
+          }
+          else if(inp_label.value !== last_label) {
+            current_examples_length = 0;
+          } 
+        }
+        else {
+          if (exist_label_counter !== null) {
+            let label_counter = exist_label_counter;
+            tmp_examples.push({ vals, label_counter });
+            
+          }
+          else {
+            tmp_examples.push({ vals, label_counter });
+            
+          }
         }
 
-        else tmp_examples.push({ vals, label_counter });
 
-        current_examples_length++;
 
-        document.querySelector("#console").value = `${current_examples_length} Aufnahmen`;
+
+        
       },
       {
         overlapFactor: 0.999,
@@ -119,17 +172,14 @@ function normalize(x) {
 }
 
 async function train() {
-
   switchConsoleColor("#7FFF00");
-
   buildModel();
   toggleInputLabel(true);
+  toggleLabelListItems(true);
   toggleThisButtons(true, true, true, true, true);
   const ys = tf.oneHot(examples.map(e => e.label_counter), label_counter);
   const xsShape = [examples.length, ...INPUT_SHAPE];
-
   const xs = tf.tensor(flatten(examples.map(e => e.vals)), xsShape);
-
   await model.fit(xs, ys, {
     batchSize: 16,
     epochs: 10,
@@ -141,6 +191,7 @@ async function train() {
   });
   tf.dispose([xs, ys]);
   toggleInputLabel(false);
+  toggleLabelListItems(false);
   toggleThisButtons(true, true, true, true, false);
 }
 
@@ -175,21 +226,23 @@ function flatten(tensors) {
 async function giveValue(labelTensor) {
   const label = (await labelTensor.data())[0];
   document.getElementById("console").value = "predict: " + collect_label_arr[label][0];
-  //console.log(collect_label_arr[label][0]);
   //socket.emit("label", collect_label_arr[label][0]);
 };
-
 
 function listen() {
   switchConsoleColor("#00FFFF");
   if (recognizer.isListening()) {
     recognizer.stopListening();
-    document.getElementById("listen").textContent = "Listen";
+    document.getElementById("listen").textContent = "Zuhören starten";
+    toggleInputLabel(false);
+    toggleLabelListItems(false);
+    toggleThisButtons(true, true, true, true, false);
     return;
   }
-
+  toggleInputLabel(true);
+  toggleLabelListItems(true);
+  toggleThisButtons(true, true, true, true, false);
   document.getElementById("listen").textContent = "Erkennung stoppen";
-  
   recognizer.listen(
     async ({ spectrogram: { frameSize, data } }) => {
       const vals = normalize(data.subarray(-frameSize * NUM_FRAMES));
@@ -205,34 +258,6 @@ function listen() {
       invokeCallbackOnNoiseAndUnknown: true
     }
   );
-}
-
-//save model
-async function save() {
-  await model.save("downloads://speech-commands-model");
-  arr2JSON(collect_label_arr, "collected-labels.json"); //word list für abgleich in meeting js
-  arr2JSON(examples, "examples.json");                  //wird benötigt um weiter zu trainieren
-}
-
-let arr2JSON = (function () {
-  let a = document.createElement("a");
-  document.body.appendChild(a);
-  a.style = "display: none";
-  return function (data, fileName) {
-    let json = JSON.stringify(data),
-      blob = new Blob([json], { type: "octet/stream" }),
-      url = window.URL.createObjectURL(blob);
-    a.href = url;
-    a.download = fileName;
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
-})();
-
-
-function load() {
-  //const model = await tf.loadLayersModel('file://speech-commands-model.json');
-  document.getElementById("fileUpload").click();
 }
 
 function updateLabelList() {
@@ -251,11 +276,8 @@ function updateLabelList() {
 
 function updateGUI(e) {
   inp_label.value = e.cells[0].textContent;
-  //console.log(e.cells[1].textContent);
   toggleThisButtons(false, true, true, true, true);
   switchConsoleColor("#ff8c00");
-
-
   document.querySelector("#console").value = e.cells[1].textContent + " Aufnahmen";
   current_examples_length = parseInt(e.cells[1].textContent);
 }
@@ -264,9 +286,9 @@ function deleteTmpExamples() {
   tmp_examples = [];
   current_examples_length = 0;
   document.querySelector("#console").value = `0 Aufnahmen`;
-
-  toggleThisButtons(false, true, true, true, true);
-
+  toggleLabelListItems(false);
+  toggleThisButtons(true, true, true, true, true);
+  inp_label.value = "";
 }
 
 function switchConsoleColor(color) {
@@ -274,34 +296,52 @@ function switchConsoleColor(color) {
   document.getElementById("console").style.border = "1px solid" + color;
 }
 
-
-/**
- * 7. wenn aufngenommen wird soll add this = Training speichern
- * 8. Exampels so einbetten, dass reload sie neu lädt damit user ohne bedenken damit rum spielen können
- */
-
 function toggleThisButtons(record, save, remove, train, listen) {
-
-  //übergeben wird true oder false
   btn_collect.disabled = record;
   btn_add.disabled = save;
   btn_remove.disabled = remove;
-  
   btn_listen.disabled = listen;
-
-
-  if(label_counter >= 2 && !train){
-    //dann darf training button disbaled = false gesetzt werden;
+  if (label_counter >= 2) {
     btn_train.disabled = train;
   }
-
 }
 
-function toggleInputLabel(disabledState){
+function toggleInputLabel(disabledState) {
   inp_label.disabled = disabledState;
 }
 
-/*
-set timeout für ein paar sekunden dann muss nicht stop gedrückt werden
+function toggleLabelListItems(disabledState) {
+  let rows = document.getElementsByClassName("real-tr");
+  let labels = document.getElementsByClassName("real-td");
+  if (disabledState) {
+    for (let j = 0; j < rows.length; j++) {
+      rows[j].removeAttribute("onclick");
+    }
+    for (let index = 0; index < labels.length; index++) {
+      labels[index].className = "real-td dis";
+    }
+  }
+  else {
+    updateLabelList();
+  }
+}
 
+/*
+bei eingabe character überprüfen include in ... dann examples ziehen aus collect_label_arr
 */
+let time;
+let timeCounter = 2;
+function time2out(){
+  let time = setInterval(function(){
+    if(timeCounter > 0){
+      document.querySelector("#console").value = timeCounter +  ` Sekunden`;
+      timeCounter--;
+    }
+    else{
+      collect();
+      timeCounter = 3;
+      clearInterval(time);
+    }
+    
+  }, 1000);
+}
