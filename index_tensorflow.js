@@ -12,7 +12,8 @@ let recognizer;
 let label_counter = 0;
 let current_examples_length = 0;
 let exist_label_counter = null;
-
+let time;
+let timeCounter = 2;
 
 inp_label.addEventListener("input", function () {
   switchConsoleColor("#ff8c00");
@@ -149,11 +150,6 @@ toggleThisButtons(1,1,1,1,1);
             
           }
         }
-
-
-
-
-        
       },
       {
         overlapFactor: 0.999,
@@ -326,11 +322,7 @@ function toggleLabelListItems(disabledState) {
   }
 }
 
-/*
-bei eingabe character überprüfen include in ... dann examples ziehen aus collect_label_arr
-*/
-let time;
-let timeCounter = 2;
+
 function time2out(){
   let time = setInterval(function(){
     if(timeCounter > 0){
@@ -339,7 +331,7 @@ function time2out(){
     }
     else{
       collect();
-      timeCounter = 3;
+      timeCounter = 2;
       clearInterval(time);
     }
     
