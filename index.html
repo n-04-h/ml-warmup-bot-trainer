@@ -42,14 +42,26 @@
       text-align: center;
     }
 
+    h1, h4{
+      margin-bottom: 20px;
+    }
+
+
+
     input {
       width: 48%;
-      color: darkorange;
+      color: #ff8c00;
       background: none;
       text-align: center;
       border: 1px solid darkorange;
       border-radius: 4px;
       height: 30px;
+      margin-bottom: 25px;
+    }
+
+    #console{
+      user-select: none;
+      -moz-user-select: none;
     }
 
     ::placeholder {
@@ -65,8 +77,6 @@
       color: rgba(255, 255, 255, 0.2);
       border: 1px solid rgba(255, 140, 0, 0.4);
     }
-
-
 
     #input-label:disabled::-webkit-input-placeholder {
       /* WebKit browsers */
@@ -88,17 +98,12 @@
       color: rgba(255, 255, 255, 0.2);
     }
 
-
-
-
     button {
       cursor: pointer;
       border-radius: 4px;
       padding: 8px;
       background: none;
     }
-
-
 
     .recording {
       color: rgb(255, 140, 0);
@@ -134,11 +139,6 @@
       cursor: no-drop;
       color: rgba(255, 255, 255, 0.2);
       border: 1px solid rgba(0, 255, 255, 0.4);
-    }
-
-    .files {
-      color: yellow;
-      border: 1px solid yellow;
     }
 
 
@@ -214,10 +214,20 @@
 
     .real-td {
       cursor: pointer;
+      user-select: none;
+      -moz-user-select: none;
       padding: 8px 0 8px 0;
     }
 
+    .dis{
+      cursor: no-drop;
+      user-select: none;
+      -moz-user-select: none;
+    }
+
     .unreal-td {
+      user-select: none;
+      -moz-user-select: none;
       padding: 8px 0 8px 0;
     }
 
@@ -247,9 +257,9 @@
     <h1>
       Warmup-Wörter-Trainer
     </h1>
-    <br />
+    
     <h4>basierend auf Machine learning</h4>
-    <br />
+    
 
     <div id="middle" class="flex row space-between">
       <!--neue teil input labels -->
@@ -257,7 +267,7 @@
         onblur="this.placeholder = 'Neues Label eingeben'">
       <input id="console" type="text" placeholder="0 Aufnahmen" disabled />
     </div>
-    <br />
+    
     <!--down-->
     <div id="main" class="flex row space-between">
       <!--left-->
